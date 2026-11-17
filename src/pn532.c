@@ -130,8 +130,13 @@ esp_err_t pn532_read_passive_target_id(pn532_io_handle_t io_handle,
 #ifdef CONFIG_MIFAREDEBUG
     ESP_LOGD(TAG, "Found %d tags", pn532_packetbuffer[7]);
 #endif
+    if (pn532_packetbuffer[7] == 0)
+        return ESP_ERR_NOT_FOUND;
+
     if (pn532_packetbuffer[7] != 1)
         return ESP_FAIL;
+
+    pn532_inListedTag = pn532_packetbuffer[8];
 
 #ifdef CONFIG_MIFAREDEBUG
     uint16_t sens_res = pn532_packetbuffer[9] << 8 | pn532_packetbuffer[10];
@@ -330,6 +335,8 @@ esp_err_t ntag2xx_get_model(pn532_io_handle_t io_handle, NTAG2XX_MODEL *model)
 
         default:
             *model = NTAG2XX_UNKNOWN;
+            ESP_LOGW(TAG, "Unsupported Type 2 CC: %02X %02X %02X %02X",
+                     page_mem[12], page_mem[13], page_mem[14], page_mem[15]);
     }
 
     return ESP_OK;

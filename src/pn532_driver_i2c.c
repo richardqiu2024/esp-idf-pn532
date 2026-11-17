@@ -103,9 +103,10 @@ esp_err_t pn532_init_io(pn532_io_handle_t io_handle)
                 .glitch_ignore_cnt = 7,
                 .flags.enable_internal_pullup = true,
         };
-        if (i2c_new_master_bus(&conf, &driver_config->i2c_bus_handle) != ESP_OK) {
-            ESP_LOGE(TAG, "i2c_new_master_bus() failed");
-            return ESP_FAIL;
+        esp_err_t err = i2c_new_master_bus(&conf, &driver_config->i2c_bus_handle);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "i2c_new_master_bus() failed: %s", esp_err_to_name(err));
+            return err;
         }
         driver_config->bus_created = true;
     }
@@ -117,15 +118,19 @@ esp_err_t pn532_init_io(pn532_io_handle_t io_handle)
         }
     }
 
-    i2c_device_config_t dev_cfg;
-    dev_cfg.dev_addr_length = I2C_ADDR_BIT_LEN_7;
-    dev_cfg.device_address = PN532_I2C_RAW_ADDRESS; // 7-bit address without RW flag
-    dev_cfg.scl_speed_hz = 100000;
-    dev_cfg.scl_wait_us = 200000;
+    i2c_device_config_t dev_cfg = {
+        .dev_addr_length = I2C_ADDR_BIT_LEN_7,
+        .device_address = PN532_I2C_RAW_ADDRESS,
+        .scl_speed_hz = 100000,
+        .scl_wait_us = 200000,
+    };
 
-    if (i2c_master_bus_add_device(driver_config->i2c_bus_handle, &dev_cfg, &driver_config->i2c_dev_handle) != ESP_OK) {
-        ESP_LOGE(TAG, "i2c_master_bus_add_device() failed");
-        return ESP_FAIL;
+    esp_err_t err = i2c_master_bus_add_device(driver_config->i2c_bus_handle,
+                                               &dev_cfg,
+                                               &driver_config->i2c_dev_handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "i2c_master_bus_add_device() failed: %s", esp_err_to_name(err));
+        return err;
     }
 
     return ESP_OK;
@@ -228,5 +233,13 @@ esp_err_t pn532_write(pn532_io_handle_t io_handle, const uint8_t *write_buffer, 
     memcpy(driver_config->frame_buffer + 1, write_buffer, write_size);
     driver_config->frame_buffer[write_size + 1] = 0;
 
-    return i2c_master_transmit(driver_config->i2c_dev_handle, driver_config->frame_buffer, write_size + 2, xfer_timeout_ms);
+    esp_err_t err = i2c_master_transmit(driver_config->i2c_dev_handle,
+                                        driver_config->frame_buffer,
+                                        write_size + 2, xfer_timeout_ms);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "I2C transmit failed: %s (bus=%p device=%p created=%d)",
+                 esp_err_to_name(err), driver_config->i2c_bus_handle,
+                 driver_config->i2c_dev_handle, driver_config->bus_created);
+    }
+    return err;
 }

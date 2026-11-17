@@ -169,7 +169,7 @@
     <header class="hero">
       <p class="eyebrow">NFC OUT-OF-BAND · BLE LEGACY PAIRING</p>
       <h1>从一次 NFC 触碰，到 BLE 灯控连接</h1>
-      <p class="lede">遥控器从 NTAG 读取灯的 OOB 配对信息，直接建立 BLE 连接。随机数在 BLE 配对期间由两端分别生成并交换；STK 用于首次链路加密，LTK 留在设备中供 bond 使用。</p>
+      <p class="lede">遥控器默认只读取 NTAG 中的 OOB 配对信息并连接 BLE 灯。首次写卡需要长按 GPIO9 五秒进入独立配置模式；写入并回读验证成功后，设备自动重启。</p>
       <div class="facts" aria-label="项目概况">
         <span>ESP32-S3 + PN532</span>
         <span>NimBLE / SMP</span>
@@ -182,34 +182,34 @@
         <span class="section-no">01 / FLOW</span>
         <div>
           <h2>系统流程</h2>
-          <p class="section-intro">空白标签只在首次配置时写入 OOB 记录。之后触碰已配置标签，遥控器读取灯的地址和 TK，再由 BLE Security Manager 完成配对与加密。</p>
+          <p class="section-intro">普通读取和写卡是两个明确分开的模式。默认启动后不会写标签；首次配置须长按 GPIO9 五秒进入写卡模式，之后触碰已配置标签即可读取 OOB 并完成 BLE 配对。</p>
         </div>
       </div>
       <div class="flow" aria-label="五个处理阶段">
         <article class="flow-step">
-          <span class="flow-index">阶段 01 · 首次配置</span>
-          <h3>扫描灯的广播</h3>
-          <p>遥控器发现名称为 NFC-BLE-LAMP 且提供服务 FFF0 的设备。</p>
+          <span class="flow-index">阶段 01 · 默认模式</span>
+          <h3>只读已配置标签</h3>
+          <p>启动后读取有效 BLE OOB NDEF；空白或不支持的标签不会触发写入。</p>
         </article>
         <article class="flow-step">
-          <span class="flow-index">阶段 02 · NFC</span>
-          <h3>写入 OOB NDEF</h3>
-          <p>空 NTAG 保存灯地址、服务信息、角色和 TK；UID 不参与配对。</p>
+          <span class="flow-index">阶段 02 · 显式写卡</span>
+          <h3>长按 GPIO9 五秒</h3>
+          <p>遥控器进入独立写卡模式，RGB LED 变蓝；普通短按仍用于灯控。</p>
         </article>
         <article class="flow-step">
-          <span class="flow-index">阶段 03 · 建链</span>
-          <h3>读取并直连</h3>
-          <p>触碰标签后校验记录，并使用其中的 BLE 地址发起连接。</p>
+          <span class="flow-index">阶段 03 · 查找灯端</span>
+          <h3>扫描 NFC-BLE-LAMP</h3>
+          <p>遥控器查找提供 FFF0 服务的灯，并等待一张空白 NTAG。</p>
         </article>
         <article class="flow-step">
-          <span class="flow-index">阶段 04 · SMP</span>
-          <h3>验证并生成 STK</h3>
-          <p>交换 Confirm 和 Random；两端用共同 TK 算出相同的 STK。</p>
+          <span class="flow-index">阶段 04 · 写入验证</span>
+          <h3>只写空白 NTAG</h3>
+          <p>写入灯的 OOB NDEF 并回读校验；已有内容的标签会被保留。</p>
         </article>
         <article class="flow-step">
-          <span class="flow-index">阶段 05 · 控灯</span>
-          <h3>Bond 后写 GATT</h3>
-          <p>保存配对密钥，发现 FFF0 / FFF1 特征，按钮发送 toggle。</p>
+          <span class="flow-index">阶段 05 · 重启使用</span>
+          <h3>配对并控制灯</h3>
+          <p>写卡验证成功后自动重启。之后触碰标签进行 OOB 配对；首次读取或配对失败亮红灯，连接就绪亮绿灯，GPIO9 短按切换灯状态。</p>
         </article>
       </div>
 
@@ -401,10 +401,11 @@
         </div>
       </div>
       <ul class="source-list">
-        <li><a href="https://github.com/Garag/esp-idf-pn532/blob/main/examples/ntag_read/main/nfc_ble_oob.c">nfc_ble_oob.c</a> · NDEF 解析和 NTAG 读写</li>
-        <li><a href="https://github.com/Garag/esp-idf-pn532/blob/main/examples/ntag_read/main/remote_ble.c">remote_ble.c</a> · Central、OOB TK 与遥控器 GATT 客户端</li>
-        <li><a href="https://github.com/Garag/esp-idf-pn532/blob/main/examples/ble_lamp/main/ble_lamp.c">ble_lamp.c</a> · Peripheral、灯端 GATT 与 LED</li>
-        <li><a href="https://github.com/Garag/esp-idf-pn532/blob/main/examples/common/ble_oob_config.h">ble_oob_config.h</a> · UUID 与开发 TK 配置</li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ntag_read/main/ntag_read.c">ntag_read.c</a> · NFC 读取、写卡模式和自动重启</li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ntag_read/main/nfc_ble_oob.c">nfc_ble_oob.c</a> · NDEF 解析、NTAG 写入与回读验证</li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ntag_read/main/remote_ble.c">remote_ble.c</a> · 长按检测、状态 LED、Central 和 GATT 客户端</li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ble_lamp/main/ble_lamp.c">ble_lamp.c</a> · Peripheral、灯端 GATT 与 LED</li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/common/ble_oob_config.h">ble_oob_config.h</a> · UUID 与开发 TK 配置</li>
       </ul>
     </section>
 
