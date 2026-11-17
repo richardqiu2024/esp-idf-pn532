@@ -4,25 +4,22 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f8f6">
-  <meta name="description" content="ESP32-S3 NFC BLE 遥控器与 RGB 灯的 OOB 配对流程、随机数交换和 TK、STK、LTK 说明。">
-  <title>NFC 到 BLE 配对 | ESP32-S3 项目说明</title>
+  <meta name="description" content="ESP32-S3 NFC 蓝牙灯遥控器的简明使用说明：写入标签、连接灯具、查看状态灯和了解项目文件。">
+  <title>NFC 蓝牙灯遥控器 | 使用说明</title>
   <style>
     :root {
       color-scheme: light;
       --ink: #1d2927;
-      --muted: #5c6b67;
+      --muted: #586963;
       --line: #d8e2dd;
       --paper: #f5f8f6;
-      --white: #ffffff;
+      --white: #fff;
       --green: #28765e;
       --green-soft: #e3f1e9;
-      --coral: #c85443;
+      --coral: #b94c3e;
       --coral-soft: #faeae6;
-      --cyan: #257487;
-      --cyan-soft: #e3f1f4;
-      --gold: #936b19;
-      --gold-soft: #f4efd9;
-      --mono: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      --blue: #236d80;
+      --blue-soft: #e3f1f4;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color: var(--ink);
       background: var(--paper);
@@ -33,118 +30,81 @@
     body { margin: 0; min-width: 320px; }
     a { color: var(--green); text-underline-offset: 3px; }
     a:hover { color: #17563f; }
-    code, kbd { font-family: var(--mono); font-size: .94em; }
-    .wrap { width: min(1080px, calc(100% - 40px)); margin-inline: auto; }
+    code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .94em; }
+    .wrap { width: min(920px, calc(100% - 40px)); margin-inline: auto; }
     .topbar { border-bottom: 1px solid var(--line); background: var(--white); }
     .topbar-inner { min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
     .brand { color: var(--ink); font-size: 13px; font-weight: 750; text-decoration: none; }
-    .topnav { display: flex; gap: 22px; flex-wrap: wrap; }
+    .topnav { display: flex; flex-wrap: wrap; gap: 18px; }
     .topnav a { color: var(--muted); font-size: 12px; text-decoration: none; }
     .topnav a:hover { color: var(--ink); }
-    header.hero { padding: 58px 0 40px; }
-    .eyebrow { margin: 0 0 12px; color: var(--green); font-family: var(--mono); font-size: 12px; font-weight: 700; }
-    h1 { max-width: 800px; margin: 0; font-size: 42px; line-height: 1.12; font-weight: 760; }
-    .lede { max-width: 760px; margin: 16px 0 0; color: var(--muted); font-size: 17px; line-height: 1.7; }
-    .facts { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 22px; color: var(--muted); font-size: 12px; }
-    .facts span::before { content: ""; display: inline-block; width: 7px; height: 7px; margin: 0 8px 1px 0; border-radius: 50%; background: var(--green); }
-    .facts span:nth-child(2)::before { background: var(--cyan); }
-    .facts span:nth-child(3)::before { background: var(--coral); }
-    .keyline { border-top: 1px solid var(--line); }
-    section { padding: 38px 0 42px; border-bottom: 1px solid var(--line); }
-    .section-head { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 24px; }
-    .section-no { color: var(--green); font-family: var(--mono); font-size: 12px; font-weight: 750; padding-top: 7px; }
-    h2 { margin: 0; font-size: 25px; line-height: 1.25; }
-    .section-intro { margin: 8px 0 0; max-width: 760px; color: var(--muted); font-size: 14px; line-height: 1.7; }
-    .flow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border-top: 2px solid var(--line); }
+    header.hero { padding: 48px 0 34px; }
+    .eyebrow { margin: 0 0 10px; color: var(--green); font-size: 12px; font-weight: 700; }
+    h1 { max-width: 740px; margin: 0; font-size: 38px; line-height: 1.2; font-weight: 750; }
+    .lede { max-width: 720px; margin: 14px 0 0; color: var(--muted); font-size: 16px; line-height: 1.75; }
+    section { padding: 32px 0 36px; border-top: 1px solid var(--line); }
+    .section-head { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; align-items: start; margin-bottom: 22px; }
+    .section-no { padding-top: 5px; color: var(--green); font-size: 12px; font-weight: 750; }
+    h2 { margin: 0; font-size: 23px; line-height: 1.3; }
+    .section-intro { max-width: 700px; margin: 7px 0 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 2px solid var(--line); }
     .flow-step { position: relative; padding: 17px 18px 0 0; }
     .flow-step::before { position: absolute; top: -6px; left: 0; width: 10px; height: 10px; border: 2px solid var(--paper); border-radius: 50%; background: var(--green); content: ""; }
-    .flow-step:nth-child(2)::before { background: var(--cyan); }
-    .flow-step:nth-child(3)::before { background: var(--gold); }
+    .flow-step:nth-child(2)::before { background: var(--blue); }
+    .flow-step:nth-child(3)::before { background: #b28125; }
     .flow-step:nth-child(4)::before { background: var(--coral); }
-    .flow-step:nth-child(5)::before { background: var(--green); }
-    .flow-index { display: block; margin-bottom: 8px; color: var(--muted); font-family: var(--mono); font-size: 10px; }
-    .flow-step h3 { margin: 0 0 6px; font-size: 14px; line-height: 1.4; }
-    .flow-step p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
-    .diagram-label { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; margin: 32px 0 10px; }
-    .diagram-label h3 { margin: 0 auto 0 0; font-size: 15px; }
-    .legend { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
-    .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); }
-    .legend:nth-of-type(2) i { background: var(--coral); }
-    .diagram-shell { overflow-x: auto; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); background: var(--white); }
-    .sequence-svg { display: block; width: 100%; min-width: 760px; height: auto; }
-    .sequence-svg text { font-family: Inter, ui-sans-serif, system-ui, sans-serif; fill: var(--ink); }
-    .sequence-svg .mono { font-family: var(--mono); }
-    .sequence-svg .muted { fill: var(--muted); }
-    .sequence-svg .lane { stroke: #d8e2dd; stroke-dasharray: 4 6; }
-    .sequence-svg .msg { stroke: #28765e; stroke-width: 2; }
-    .sequence-svg .msg-back { stroke: #c85443; stroke-width: 2; }
-    .sequence-svg .edge { fill: none; stroke: #73827e; stroke-width: 1.5; }
-    .caption { margin: 10px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
-    .methods { display: grid; grid-template-columns: 1fr 1fr; gap: 0 38px; }
-    details { border-top: 1px solid var(--line); padding: 16px 0; }
-    details:last-child, details:nth-last-child(2) { border-bottom: 1px solid var(--line); }
-    summary { display: flex; align-items: baseline; gap: 12px; cursor: pointer; list-style: none; font-size: 15px; font-weight: 700; }
-    summary::-webkit-details-marker { display: none; }
-    summary::before { content: "+"; width: 18px; color: var(--green); font-family: var(--mono); font-size: 18px; line-height: 1; }
-    details[open] summary::before { content: "−"; }
-    details p, details ul { margin: 12px 0 0 30px; color: var(--muted); font-size: 13px; line-height: 1.75; }
-    details ul { padding-left: 18px; }
-    .formula { display: block; margin: 13px 0 4px 30px; padding: 13px 15px; border-left: 3px solid var(--green); background: var(--white); color: var(--ink); font-family: var(--mono); font-size: 13px; overflow-wrap: anywhere; }
-    .keys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-    .key { padding: 18px 22px 19px 0; }
-    .key + .key { padding-left: 22px; border-left: 1px solid var(--line); }
-    .key-symbol { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
-    .key-symbol b { display: inline-grid; place-items: center; width: 34px; aspect-ratio: 1; color: var(--white); border-radius: 50%; background: var(--cyan); font-family: var(--mono); font-size: 13px; }
-    .key:nth-child(2) .key-symbol b { background: var(--coral); }
-    .key:nth-child(3) .key-symbol b { background: var(--green); }
-    .key h3 { margin: 0; font-size: 16px; }
-    .key p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
-    .key .storage { display: block; margin-top: 10px; color: var(--ink); font-size: 11px; font-weight: 650; }
-    .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
-    .data-col { padding-top: 15px; border-top: 2px solid var(--cyan); }
-    .data-col:last-child { border-color: var(--coral); }
-    .data-col h3 { margin: 0 0 12px; font-size: 15px; }
-    .data-col ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; line-height: 1.9; }
-    .security-note { margin-top: 26px; padding: 15px 18px; border-left: 3px solid var(--gold); background: var(--gold-soft); }
-    .security-note strong { display: block; margin-bottom: 5px; color: #604609; font-size: 13px; }
-    .security-note p { margin: 0; color: #5d543a; font-size: 12px; line-height: 1.7; }
-    .hardware { display: flex; flex-wrap: wrap; gap: 8px 22px; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
-    .hardware b { color: var(--ink); font-weight: 650; }
-    .source-list { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 0; padding: 0; list-style: none; font-size: 12px; }
-    footer { padding: 24px 0 34px; color: var(--muted); font-size: 11px; line-height: 1.7; }
-    @media (max-width: 760px) {
-      .wrap { width: min(100% - 30px, 600px); }
-      .topbar-inner { align-items: flex-start; flex-direction: column; padding: 12px 0; gap: 10px; }
-      .topnav { gap: 14px; }
-      header.hero { padding: 40px 0 30px; }
-      h1 { font-size: 34px; }
+    .flow-step b { display: block; margin-bottom: 6px; font-size: 14px; }
+    .flow-step p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .howto { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+    .howto article { padding-top: 15px; border-top: 2px solid var(--blue); }
+    .howto article + article { border-color: var(--green); }
+    .howto h3 { margin: 0 0 12px; font-size: 17px; }
+    .howto ol { margin: 0; padding-left: 22px; color: var(--muted); font-size: 14px; line-height: 1.85; }
+    .howto li + li { margin-top: 6px; }
+    .note { margin: 16px 0 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .status-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+    .status { display: flex; gap: 10px; padding: 15px 14px 15px 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .status + .status { padding-left: 16px; border-left: 1px solid var(--line); }
+    .dot { flex: 0 0 12px; width: 12px; height: 12px; margin-top: 4px; border-radius: 50%; background: var(--green); }
+    .status:nth-child(2) .dot { background: var(--coral); }
+    .status:nth-child(3) .dot { background: #367c9a; }
+    .status strong { display: block; margin-bottom: 2px; color: var(--ink); font-size: 14px; }
+    .plain-list { margin: 0; padding-left: 20px; color: var(--muted); font-size: 14px; line-height: 1.85; }
+    .plain-list li + li { margin-top: 5px; }
+    .security-note { margin-top: 20px; padding: 14px 16px; border-left: 3px solid #b28125; background: #f4efd9; }
+    .security-note strong { display: block; margin-bottom: 4px; color: #604609; font-size: 14px; }
+    .security-note p { margin: 0; color: #5d543a; font-size: 13px; line-height: 1.7; }
+    details { border-top: 1px solid var(--line); padding: 14px 0; }
+    details:last-child { border-bottom: 1px solid var(--line); }
+    summary { cursor: pointer; font-size: 14px; font-weight: 700; }
+    details p, details ul { margin: 10px 0 0; padding-left: 20px; color: var(--muted); font-size: 13px; line-height: 1.8; }
+    details p { padding-left: 0; }
+    .source-list { margin: 0; padding: 0; list-style: none; }
+    .source-list li { display: grid; grid-template-columns: minmax(160px, .75fr) minmax(0, 2fr); gap: 16px; padding: 12px 0; border-top: 1px solid var(--line); font-size: 13px; line-height: 1.65; }
+    .source-list li:last-child { border-bottom: 1px solid var(--line); }
+    .source-list span { color: var(--muted); }
+    footer { padding: 22px 0 30px; color: var(--muted); font-size: 12px; line-height: 1.7; }
+    @media (max-width: 700px) {
+      .wrap { width: min(100% - 30px, 560px); }
+      .topbar-inner { align-items: flex-start; flex-direction: column; padding: 11px 0; gap: 9px; }
+      .topnav { gap: 10px 16px; }
+      header.hero { padding: 36px 0 28px; }
+      h1 { font-size: 31px; }
       .lede { font-size: 15px; }
-      section { padding: 29px 0 32px; }
-      .section-head { grid-template-columns: 34px minmax(0, 1fr); gap: 8px; }
-      h2 { font-size: 21px; }
+      section { padding: 26px 0 30px; }
+      .section-head { grid-template-columns: 30px minmax(0, 1fr); gap: 8px; }
+      h2 { font-size: 20px; }
       .flow { grid-template-columns: 1fr; border-top: 0; border-left: 2px solid var(--line); margin-left: 4px; }
-      .flow-step { padding: 0 0 20px 20px; }
-      .flow-step::before { top: 2px; left: -6px; }
-      .flow-step p { max-width: 500px; }
-      .methods, .data-grid { grid-template-columns: 1fr; gap: 0; }
-      details:nth-last-child(2) { border-bottom: 0; }
-      .keys { grid-template-columns: 1fr; }
-      .key, .key + .key { padding: 16px 0; border-left: 0; }
-      .key + .key { border-top: 1px solid var(--line); }
-    }
-    @media (prefers-reduced-motion: no-preference) {
-      .flow-step { animation: appear .45s both; }
-      .flow-step:nth-child(2) { animation-delay: .05s; }
-      .flow-step:nth-child(3) { animation-delay: .1s; }
-      .flow-step:nth-child(4) { animation-delay: .15s; }
-      .flow-step:nth-child(5) { animation-delay: .2s; }
-      @keyframes appear { from { opacity: .3; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+      .flow-step { padding: 0 0 18px 18px; }
+      .flow-step::before { top: 3px; left: -6px; }
+      .howto, .status-list { grid-template-columns: 1fr; gap: 20px; }
+      .status + .status { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); }
+      .source-list li { grid-template-columns: 1fr; gap: 2px; }
     }
     @media print {
-      :root { background: white; }
+      :root { background: #fff; }
       .topbar { display: none; }
       .wrap { width: 100%; }
-      header.hero { padding-top: 20px; }
       details:not([open]) > :not(summary) { display: block; }
       details { break-inside: avoid; }
       a { color: inherit; }
@@ -154,264 +114,172 @@
 <body>
   <div class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="#top">ESP32-S3 / NFC BLE</a>
+      <a class="brand" href="#top">NFC 蓝牙灯遥控器</a>
       <nav class="topnav" aria-label="页面导航">
-        <a href="#flow">系统流程</a>
-        <a href="#random">随机数与 STK</a>
-        <a href="#keys">三种密钥</a>
-        <a href="#tag">标签数据</a>
-        <a href="#source">代码位置</a>
+        <a href="#flow">工作流程</a>
+        <a href="#use">怎么使用</a>
+        <a href="#tag">标签说明</a>
+        <a href="#source">项目文件</a>
       </nav>
     </div>
   </div>
 
   <main id="top" class="wrap">
     <header class="hero">
-      <p class="eyebrow">NFC OUT-OF-BAND · BLE LEGACY PAIRING</p>
-      <h1>从一次 NFC 触碰，到 BLE 灯控连接</h1>
-      <p class="lede">遥控器默认只读取 NTAG 中的 OOB 配对信息并连接 BLE 灯。首次写卡需要长按 GPIO9 五秒进入独立配置模式；写入并回读验证成功后，设备自动重启。</p>
-      <div class="facts" aria-label="项目概况">
-        <span>ESP32-S3 + PN532</span>
-        <span>NimBLE / SMP</span>
-        <span>Legacy OOB · bonding</span>
-      </div>
+      <p class="eyebrow">ESP32-S3 · NFC · 蓝牙灯控</p>
+      <h1>碰一下标签，再按按钮开关灯</h1>
+      <p class="lede">遥控器读取 NFC 标签里的灯具资料，通过蓝牙连接灯板。连接成功后，按一下遥控器上的按钮就能切换灯的开关状态。</p>
     </header>
 
     <section id="flow">
       <div class="section-head">
-        <span class="section-no">01 / FLOW</span>
+        <span class="section-no">01</span>
         <div>
-          <h2>系统流程</h2>
-          <p class="section-intro">普通读取和写卡是两个明确分开的模式。默认启动后不会写标签；首次配置须长按 GPIO9 五秒进入写卡模式，之后触碰已配置标签即可读取 OOB 并完成 BLE 配对。</p>
+          <h2>它是怎样工作的？</h2>
+          <p class="section-intro">标签负责告诉遥控器要连接哪盏灯；连接后，按钮负责开关灯。</p>
         </div>
       </div>
-      <div class="flow" aria-label="五个处理阶段">
+      <div class="flow" aria-label="系统工作流程">
         <article class="flow-step">
-          <span class="flow-index">阶段 01 · 默认模式</span>
-          <h3>只读已配置标签</h3>
-          <p>启动后读取有效 BLE OOB NDEF；空白或不支持的标签不会触发写入。</p>
+          <b>1. 靠近标签</b>
+          <p>遥控器读出标签里保存的灯具资料。</p>
         </article>
         <article class="flow-step">
-          <span class="flow-index">阶段 02 · 显式写卡</span>
-          <h3>长按 GPIO9 五秒</h3>
-          <p>遥控器进入独立写卡模式，RGB LED 变蓝；普通短按仍用于灯控。</p>
+          <b>2. 连接蓝牙灯</b>
+          <p>遥控器按标签里的资料找到灯并建立连接。</p>
         </article>
         <article class="flow-step">
-          <span class="flow-index">阶段 03 · 查找灯端</span>
-          <h3>扫描 NFC-BLE-LAMP</h3>
-          <p>遥控器查找提供 FFF0 服务的灯，并等待一张空白 NTAG。</p>
+          <b>3. 连接准备好</b>
+          <p>遥控器亮绿灯，表示可以控制灯了。</p>
         </article>
         <article class="flow-step">
-          <span class="flow-index">阶段 04 · 写入验证</span>
-          <h3>只写空白 NTAG</h3>
-          <p>写入灯的 OOB NDEF 并回读校验；已有内容的标签会被保留。</p>
+          <b>4. 按键控制</b>
+          <p>按 GPIO9 按钮，灯就在亮与灭之间切换。</p>
         </article>
-        <article class="flow-step">
-          <span class="flow-index">阶段 05 · 重启使用</span>
-          <h3>配对并控制灯</h3>
-          <p>写卡验证成功后自动重启。之后触碰标签进行 OOB 配对；首次读取或配对失败亮红灯，连接就绪亮绿灯，GPIO9 短按切换灯状态。</p>
-        </article>
-      </div>
-
-      <div class="diagram-label">
-        <h3>首次配对时的 SMP 消息顺序</h3>
-        <span class="legend"><i></i>遥控器 / Central</span>
-        <span class="legend"><i></i>灯 / Peripheral</span>
-      </div>
-      <div class="diagram-shell" role="region" aria-label="BLE 配对时序图，可横向滚动" tabindex="0">
-        <svg class="sequence-svg" viewBox="0 0 1000 480" role="img" aria-labelledby="sequence-title sequence-desc">
-          <title id="sequence-title">遥控器和 BLE 灯的 Legacy OOB 配对时序</title>
-          <desc id="sequence-desc">中央遥控器发送 Pairing Request 和 Confirm、RAND；灯回复 Pairing Response、Confirm、RAND。双方验证并使用相同 TK 和随机数计算 STK。</desc>
-          <defs>
-            <marker id="arrow-g" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#28765e"/></marker>
-            <marker id="arrow-c" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#c85443"/></marker>
-            <marker id="arrow-gray" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#73827e"/></marker>
-          </defs>
-          <text x="165" y="32" text-anchor="middle" font-size="13" font-weight="700">NFC-BLE-REMOTE</text>
-          <text x="165" y="51" text-anchor="middle" font-size="11" class="muted">Initiator / Central</text>
-          <text x="835" y="32" text-anchor="middle" font-size="13" font-weight="700">NFC-BLE-LAMP</text>
-          <text x="835" y="51" text-anchor="middle" font-size="11" class="muted">Responder / Peripheral</text>
-          <line x1="165" y1="65" x2="165" y2="355" class="lane"/>
-          <line x1="835" y1="65" x2="835" y2="355" class="lane"/>
-          <text x="28" y="93" font-size="10" class="mono muted">01</text>
-          <line x1="176" y1="90" x2="824" y2="90" class="msg" marker-end="url(#arrow-g)"/>
-          <text x="500" y="82" text-anchor="middle" font-size="12">Pairing Request · OOB=1 · bonding</text>
-          <text x="28" y="129" font-size="10" class="mono muted">02</text>
-          <line x1="824" y1="126" x2="176" y2="126" class="msg-back" marker-end="url(#arrow-c)"/>
-          <text x="500" y="118" text-anchor="middle" font-size="12">Pairing Response · Legacy pairing</text>
-          <text x="28" y="174" font-size="10" class="mono muted">03</text>
-          <line x1="176" y1="171" x2="824" y2="171" class="msg" marker-end="url(#arrow-g)"/>
-          <text x="500" y="163" text-anchor="middle" font-size="12">Pairing Confirm · Confirm_I = c1(TK, RAND_I, pairing data)</text>
-          <text x="28" y="210" font-size="10" class="mono muted">04</text>
-          <line x1="824" y1="207" x2="176" y2="207" class="msg-back" marker-end="url(#arrow-c)"/>
-          <text x="500" y="199" text-anchor="middle" font-size="12">Pairing Confirm · Confirm_R = c1(TK, RAND_R, pairing data)</text>
-          <text x="28" y="255" font-size="10" class="mono muted">05</text>
-          <line x1="176" y1="252" x2="824" y2="252" class="msg" marker-end="url(#arrow-g)"/>
-          <text x="500" y="244" text-anchor="middle" font-size="12" class="mono">Pairing Random · RAND_I (128 bit)</text>
-          <text x="28" y="291" font-size="10" class="mono muted">06</text>
-          <line x1="824" y1="288" x2="176" y2="288" class="msg-back" marker-end="url(#arrow-c)"/>
-          <text x="500" y="280" text-anchor="middle" font-size="12" class="mono">Pairing Random · RAND_R (128 bit)</text>
-          <rect x="256" y="319" width="488" height="49" rx="4" fill="#e3f1e9"/>
-          <text x="500" y="339" text-anchor="middle" font-size="12" font-weight="700">两端验证 Confirm，并按相同顺序得到相同 STK</text>
-          <text x="500" y="357" text-anchor="middle" font-size="11" class="mono">s1(TK, RAND_R, RAND_I)</text>
-          <line x1="165" y1="387" x2="835" y2="387" class="edge" marker-end="url(#arrow-gray)"/>
-          <line x1="835" y1="405" x2="165" y2="405" class="edge" marker-end="url(#arrow-gray)"/>
-          <text x="500" y="383" text-anchor="middle" font-size="11">STK 启用首次链路加密 · ENC key distribution / bonding</text>
-          <rect x="333" y="431" width="334" height="30" rx="3" fill="#e3f1f4"/>
-          <text x="500" y="451" text-anchor="middle" font-size="11">发现 FFF0 服务 / FFF1 控制特征 · GPIO9 按钮发送 Toggle</text>
-        </svg>
-      </div>
-      <p class="caption">时序为首次 Legacy Pairing 的概念图。已存在 bond 时，BLE 栈可以使用保存的 LTK 恢复加密，不必每次重新生成 STK。</p>
-    </section>
-
-    <section id="random">
-      <div class="section-head">
-        <span class="section-no">02 / RAND</span>
-        <div>
-          <h2>随机数如何产生，又如何同步？</h2>
-          <p class="section-intro">不是两台设备各自算出同一个随机数，而是各自产生一个随机数，再通过 SMP 交换这两个值。</p>
-        </div>
-      </div>
-      <div class="methods">
-        <details open>
-          <summary>两端分别生成自己的 RAND</summary>
-          <p>遥控器是 Initiator，产生 <code>RAND_I</code>；灯是 Responder，产生 <code>RAND_R</code>。Legacy Pairing 使用 128 bit 随机值。项目应用代码不构造这些值，NimBLE Security Manager 在配对过程中处理生成和 SMP 消息。</p>
-        </details>
-        <details open>
-          <summary>先交换 Confirm，再公开 RAND</summary>
-          <p>双方先用共同 TK、自己的 RAND 和本次配对参数计算 Confirm 并交换。之后 Central 发送 <code>RAND_I</code>，Peripheral 验证后发送 <code>RAND_R</code>。收到 RAND 后，各自重新计算对端的 Confirm；不匹配就终止配对。</p>
-        </details>
-        <details>
-          <summary>用相同输入顺序算出 STK</summary>
-          <p>两端最终都拥有同一对随机数和相同 TK。SMP 的 <code>s1</code> 对角色顺序固定，因此结果一致，作为首次链路加密的临时密钥。</p>
-          <span class="formula">STK = s1(TK, LP_RAND_R, LP_RAND_I)</span>
-        </details>
-        <details>
-          <summary>NFC 标签不负责“同步”随机数</summary>
-          <p>标签上的 TK 是 OOB 配对输入；它不会保存本次的 <code>RAND_I</code>、<code>RAND_R</code>、Confirm 或 STK。随机数只在这次 BLE SMP 交互中交换，下一次新配对会重新产生。</p>
-        </details>
       </div>
     </section>
 
-    <section id="keys">
+    <section id="use">
       <div class="section-head">
-        <span class="section-no">03 / KEYS</span>
+        <span class="section-no">02</span>
         <div>
-          <h2>TK、STK、LTK 各自做什么</h2>
-          <p class="section-intro">三种密钥位于配对流程的不同阶段，不能互相替代。</p>
+          <h2>怎么使用？</h2>
+          <p class="section-intro">写标签只需做一次。写好后，日常使用只要碰一下标签并按按钮。</p>
         </div>
       </div>
-      <div class="keys">
-        <article class="key">
-          <div class="key-symbol"><b>TK</b><h3>Temporary Key</h3></div>
-          <p>Legacy Pairing 的临时输入。OOB 方式让两端通过 NFC 取得同一个 TK，再用于计算 Confirm 和 STK。</p>
-          <span class="storage">本项目：固定开发值；存于固件并写进可读的 NDEF 标签。</span>
+      <div class="howto">
+        <article>
+          <h3>第一次：写入空白标签</h3>
+          <ol>
+            <li>打开灯板和遥控器。</li>
+            <li>按住遥控器 GPIO9 按钮约 5 秒，看到蓝灯后松开。</li>
+            <li>把一张空白 NTAG 标签贴近读卡器，并保持不动。</li>
+            <li>写入检查成功后，遥控器会自动重启。</li>
+          </ol>
+          <p class="note">已经写过内容的标签不会被覆盖。平时开机不会自动写卡。</p>
         </article>
-        <article class="key">
-          <div class="key-symbol"><b>STK</b><h3>Short Term Key</h3></div>
-          <p>由 TK 和这一轮的两个 RAND 经 <code>s1</code> 得出。用来开启首次 BLE 链路加密，并保护后续的密钥分发。</p>
-          <span class="storage">本项目：由 NimBLE 配对流程处理；不写进标签，也不作为长期 bond key 保存。</span>
-        </article>
-        <article class="key">
-          <div class="key-symbol"><b>LTK</b><h3>Long Term Key</h3></div>
-          <p>bond 阶段使用的长期链路密钥材料。以后重新连接时，设备可使用已保存的 LTK 恢复链路加密。</p>
-          <span class="storage">本项目：通过 NimBLE bonding / ENC key distribution 保存到两端 NVS；不在 NFC 标签中。</span>
+        <article>
+          <h3>平时：连接并控制灯</h3>
+          <ol>
+            <li>打开灯板和遥控器。</li>
+            <li>把写好的标签贴近遥控器读卡器。</li>
+            <li>等遥控器亮绿灯，再移开标签。</li>
+            <li>按一下 GPIO9 按钮切换灯的开关状态。</li>
+          </ol>
+          <p class="note">同一张标签要先移开，再重新靠近，遥控器才会再次读取。</p>
         </article>
       </div>
-      <p class="caption">固件启用 bonding，并在 NimBLE 配置中请求 ENC key distribution。具体密钥与关联参数的生成、交换和存储由 BLE 栈完成。</p>
+    </section>
+
+    <section id="status">
+      <div class="section-head">
+        <span class="section-no">03</span>
+        <div>
+          <h2>遥控器上的颜色代表什么？</h2>
+          <p class="section-intro">看遥控器的 RGB 灯，就能知道当前进度。</p>
+        </div>
+      </div>
+      <div class="status-list">
+        <div class="status"><i class="dot" aria-hidden="true"></i><div><strong>绿灯</strong>已连接，按键可以控制灯。</div></div>
+        <div class="status"><i class="dot" aria-hidden="true"></i><div><strong>红灯</strong>首次读卡或连接没有成功；移开标签后再试。</div></div>
+        <div class="status"><i class="dot" aria-hidden="true"></i><div><strong>蓝灯</strong>正在等待空白标签写入。</div></div>
+      </div>
     </section>
 
     <section id="tag">
       <div class="section-head">
-        <span class="section-no">04 / NDEF</span>
+        <span class="section-no">04</span>
         <div>
-          <h2>标签里有什么，什么不在里面</h2>
-          <p class="section-intro">标签是一份 Bluetooth LE OOB NDEF 记录，作用是提供首次连接和 OOB 配对所需的信息。</p>
+          <h2>标签里保存了什么？</h2>
+          <p class="section-intro">标签里保存的是连接灯所需的资料，不是开关命令。</p>
         </div>
       </div>
-      <div class="data-grid">
-        <div class="data-col">
-          <h3>NDEF 中的 OOB 字段</h3>
-          <ul>
-            <li>BLE 设备地址与地址类型</li>
-            <li>设备名 <code>NFC-BLE-LAMP</code></li>
-            <li>服务 UUID <code>0xFFF0</code></li>
-            <li>LE Role 字段</li>
-            <li>LE Security Manager TK Value</li>
-            <li>Flags 与 NDEF / Type 2 TLV 封装</li>
-          </ul>
-        </div>
-        <div class="data-col">
-          <h3>标签中没有</h3>
-          <ul>
-            <li>本次配对的 <code>RAND_I</code>、<code>RAND_R</code> 和 Confirm</li>
-            <li>计算出的 STK</li>
-            <li>Bond 保存的 LTK</li>
-            <li>灯控特征 UUID <code>0xFFF1</code></li>
-            <li>作为连接开关的 NFC UID</li>
-          </ul>
+      <ul class="plain-list">
+        <li>灯的名称和蓝牙地址，帮助遥控器找到正确的灯。</li>
+        <li>首次连接时要用的配对资料。</li>
+        <li>不是靠标签的卡号来配对或控制灯。</li>
+        <li>以后连接要用的长期资料保存在遥控器和灯板里，不写在标签上。</li>
+      </ul>
+    </section>
+
+    <section id="security">
+      <div class="section-head">
+        <span class="section-no">05</span>
+        <div>
+          <h2>安全提醒</h2>
+          <p class="section-intro">当前配置用于项目演示和开发测试。</p>
         </div>
       </div>
       <aside class="security-note">
-        <strong>当前工程是开发配置，不适合直接用于生产安全场景</strong>
-        <p>两份固件共享固定 TK，标签上的 NDEF 可被普通 NFC 读取和复制；同时 <code>sm_sc = 0</code> 选择的是 Legacy Pairing。即使日志报告 authenticated/bonded，也不代表这把公开的固定 TK 能抵抗标签复制或主动攻击。量产应为每台灯生成独立随机 TK，保护密钥配置与标签写入过程，并重新评估配对安全模式。</p>
+        <strong>不要把这套演示配置用于门锁或重要设备</strong>
+        <p>当前遥控器和灯使用相同的固定配对资料，而且标签内容可以被读取和复制。别人复制标签后，也可能拿到连接所需的资料。</p>
       </aside>
     </section>
 
-    <section id="implementation">
+    <section id="details">
       <div class="section-head">
-        <span class="section-no">05 / DEVICE</span>
+        <span class="section-no">06</span>
         <div>
-          <h2>项目中的硬件与控制命令</h2>
-          <p class="section-intro">配对成功后，遥控器发现灯的 GATT 控制特征，并用写入命令驱动 RGB LED。</p>
+          <h2>想多了解一点？</h2>
+          <p class="section-intro">下面是可选阅读内容，日常使用不需要了解这些名词。</p>
         </div>
       </div>
-      <div class="hardware">
-        <span><b>PN532 I²C</b> SDA GPIO4 · SCL GPIO5 · IRQ GPIO6 · RESET GPIO7</span>
-        <span><b>按钮</b> GPIO9 · 低电平有效</span>
-        <span><b>RGB LED</b> GPIO48</span>
-        <span><b>GATT</b> Service FFF0 · Characteristic FFF1</span>
-      </div>
-      <div class="data-grid" style="margin-top:22px">
-        <div class="data-col">
-          <h3>控制特征的单字节命令</h3>
-          <ul>
-            <li><code>0</code>：灯灭</li>
-            <li><code>1</code>：灯亮</li>
-            <li><code>2</code>：切换当前状态；GPIO9 按钮发送此命令</li>
-          </ul>
-        </div>
-        <div class="data-col">
-          <h3>灯端校验</h3>
-          <ul>
-            <li>命令写入要求连接已加密</li>
-            <li>还要求 authenticated 与 bonded 状态</li>
-            <li>灯端 WS2812 RGB LED 由 GPIO48 输出驱动</li>
-          </ul>
-        </div>
-      </div>
+      <details id="random">
+        <summary>配对时的随机数从哪里来？</summary>
+        <p>遥控器和灯板会各自产生一个随机数，并在首次连接时互相交换、核对。随机数不会预先写在 NFC 标签里。</p>
+      </details>
+      <details id="keys">
+        <summary>TK、STK、LTK 是什么？</summary>
+        <ul>
+          <li><strong>TK：</strong>首次配对时双方共同使用的资料；当前演示版本的设备共用同一份。</li>
+          <li><strong>STK：</strong>首次配对过程中临时生成的加密钥匙，只用于建立这次连接；不存放在标签里。</li>
+          <li><strong>LTK：</strong>首次连接后保存到两块板里的长期钥匙，之后重新连接时使用；不存放在标签里。</li>
+        </ul>
+      </details>
+      <details>
+        <summary>硬件接线</summary>
+        <p>PN532：SDA 接 GPIO4，SCL 接 GPIO5，IRQ 接 GPIO6，RESET 接 GPIO7。遥控器按钮接 GPIO9，遥控器和灯板的 RGB 灯接 GPIO48。</p>
+      </details>
     </section>
 
     <section id="source">
       <div class="section-head">
-        <span class="section-no">06 / SOURCE</span>
+        <span class="section-no">07</span>
         <div>
-          <h2>对应的实现文件</h2>
-          <p class="section-intro">这些文件分别负责 NDEF 读写、遥控器端配对、灯端 GATT 服务，以及共用的 OOB 配置。</p>
+          <h2>项目文件在哪里？</h2>
+          <p class="section-intro">这些链接打开的是程序源代码。只想使用遥控器的话，不需要打开它们。</p>
         </div>
       </div>
       <ul class="source-list">
-        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ntag_read/main/ntag_read.c">ntag_read.c</a> · NFC 读取、写卡模式和自动重启</li>
-        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ntag_read/main/nfc_ble_oob.c">nfc_ble_oob.c</a> · NDEF 解析、NTAG 写入与回读验证</li>
-        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ntag_read/main/remote_ble.c">remote_ble.c</a> · 长按检测、状态 LED、Central 和 GATT 客户端</li>
-        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ble_lamp/main/ble_lamp.c">ble_lamp.c</a> · Peripheral、灯端 GATT 与 LED</li>
-        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/common/ble_oob_config.h">ble_oob_config.h</a> · UUID 与开发 TK 配置</li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ntag_read/main/ntag_read.c">遥控器的读卡流程</a><span>ntag_read.c：识别标签、等待写卡或发起连接。</span></li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ntag_read/main/nfc_ble_oob.c">标签内容的读写</a><span>nfc_ble_oob.c：把连接资料写进标签，并在使用时读出来。</span></li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ntag_read/main/remote_ble.c">遥控器的蓝牙和按键</a><span>remote_ble.c：连接灯、处理 GPIO9 按钮和更新状态灯。</span></li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/ble_lamp/main/ble_lamp.c">灯板的蓝牙和灯光</a><span>ble_lamp.c：接收遥控命令并控制 RGB 灯。</span></li>
+        <li><a href="https://github.com/richardqiu2024/esp-idf-pn532/blob/main/examples/common/ble_oob_config.h">两块板共用的设置</a><span>ble_oob_config.h：保存设备名称和开发测试用的配对资料。</span></li>
       </ul>
     </section>
 
-    <footer>
-      本页按当前仓库中的 ESP-IDF / NimBLE 固件实现整理。BLE 配对算法由 NimBLE Security Manager 执行；图示展示 Legacy OOB 配对的数据关系，具体协议细节以 Bluetooth Core Specification 为准。
-    </footer>
+    <footer>本页根据项目当前固件整理。若连接失败，请先确认灯板已上电，再移开标签并重新靠近读卡器。</footer>
   </main>
 </body>
 </html>
